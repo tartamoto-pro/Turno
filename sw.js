@@ -1,5 +1,5 @@
 /* Turnos: se pide a internet primero y, sin cobertura, se abre la copia guardada */
-const CACHE = 'turnos-v2';
+const CACHE = 'turnos-v3';
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./', './index.html', './lector.js', './manifest.webmanifest', './icon-192.png']).catch(() => null)));
   self.skipWaiting();

@@ -13,9 +13,9 @@
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { margin:0; height:100%; background:#f2f2f2; font-family:Roboto, system-ui, sans-serif; color:#222; }
   body { display:flex; flex-direction:column; }
-  header { background:var(--barra); color:#fff; padding:12px 14px; display:flex; align-items:center; gap:10px; }
+  header { background:var(--barra); color:#fff; padding:8px 12px; display:flex; align-items:center; gap:10px; }
   header h1 { font-size:20px; margin:0; flex:1; font-weight:600; }
-  header button { background:none; border:2px solid #fff6; color:#fff; border-radius:8px; padding:6px 10px; font-size:15px; }
+  header button { background:none; border:2px solid #fff6; color:#fff; border-radius:8px; padding:5px 9px; font-size:17px; }
   .mes { display:flex; align-items:center; justify-content:space-between; padding:8px 6px 4px; background:#fff; }
   .mes h2 { margin:0; font-size:24px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; }
   .mes button { background:none; border:none; font-size:34px; padding:0 14px; color:#333; line-height:1; }
@@ -73,6 +73,8 @@
 <body>
 <header>
   <h1>📅 Turnos</h1>
+  <button id="btnFoto" aria-label="Foto de su calendario">📷</button>
+  <button id="btnGal" aria-label="Elegir de la galería">🖼️</button>
   <button id="btnHoy">Hoy</button>
 </header>
 <div class="mes">
@@ -88,10 +90,6 @@
     <button data-p="M" style="background:var(--m)">M<small>8–15</small></button>
     <button data-p="N" style="background:var(--n)">N<small>20–8</small></button>
     <button data-p="" style="background:#fff">🧽<small>Borrar</small></button>
-  </div>
-  <div class="botones">
-    <button id="btnFoto">📷 Foto de su calendario</button>
-    <button id="btnGal" class="sec">🖼️ Galería</button>
   </div>
   <div class="ayuda" id="ayuda">Elige un color y toca los días para pintarlos · Mantén pulsado un día para escribir una nota</div>
 </div>
