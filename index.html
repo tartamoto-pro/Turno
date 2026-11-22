@@ -103,6 +103,8 @@
   <div id="resumen">
     <div class="selmes"><button id="rAnt">‹</button><span id="rMes"></span><button id="rSig">›</button></div>
     <div id="mini"></div>
+    <div id="mover" style="display:flex;gap:8px;justify-content:center;align-items:center;margin-top:8px;font-size:14px">Mover rejilla:
+      <button id="mArriba" style="font-size:20px;padding:2px 16px">▲</button><button id="mAbajo" style="font-size:20px;padding:2px 16px">▼</button></div>
   </div>
   <div class="botones">
     <button id="cCancelar" class="sec">Cancelar</button>
@@ -268,39 +270,70 @@
     img.onerror = function(){ toast("No se pudo abrir la foto"); };
     img.src = url;
   }
+  /* filas de la cuadrícula que tienen días del mes (5 o 6) */
+  function filasMes(a, m){ var u = new Date(a, m + 1, 0), dw = (new Date(a, m, 1).getDay() + 6) % 7; return Math.floor((dw + u.getDate() - 1) / 7) + 1; }
+  function ultimoDia(a, m){ return new Date(a, m + 1, 0).getDate(); }
   function dibujar(){
     ctx.putImageData(imgData, 0, 0);
     if (!rejillaFoto) return;
-    var g = rejillaFoto, cw = (g.x1 - g.x0) / 7, ch = (g.y1 - g.y0) / 6;
+    var m = LectorTurnos.mapa(rejillaFoto), F = rejillaFoto.pts ? rejillaFoto.filas : 6;
     ctx.strokeStyle = "#ff0"; ctx.lineWidth = 2;
-    for (var i = 0; i <= 7; i++) { ctx.beginPath(); ctx.moveTo(g.x0 + i * cw, g.y0); ctx.lineTo(g.x0 + i * cw, g.y1); ctx.stroke(); }
-    for (var j = 0; j <= 6; j++) { ctx.beginPath(); ctx.moveTo(g.x0, g.y0 + j * ch); ctx.lineTo(g.x1, g.y0 + j * ch); ctx.stroke(); }
+    function linea(p, q){ ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(q[0], q[1]); ctx.stroke(); }
+    for (var i = 0; i <= 7; i++) linea(m(i, 0), m(i, F));
+    for (var j = 0; j <= F; j++) linea(m(0, j), m(7, j));
   }
   function leer(){
     marcando = 0;
+    if (rejillaFoto.pts) rejillaFoto.filas = filasMes(rA, rM);
     leidos = LectorTurnos.leerCasillas(imgData, rejillaFoto);
     dibujar();
-    $("capaTxt").textContent = "Comprueba que el mes es el de la foto y que los colores coinciden. Si la rejilla amarilla no cuadra, pulsa «Marcar a mano».";
+    $("capaTxt").textContent = "Comprueba que el mes es el de la foto y que los colores de abajo coinciden. Si la rejilla amarilla no cuadra, muévela con ▲ ▼ o pulsa «Marcar a mano».";
+    $("mini").style.display = ""; $("mover").style.display = rejillaFoto.pts ? "none" : "flex";
     $("resumen").style.display = "block"; $("cGuardar").disabled = false;
     resumen();
   }
   function resumen(){
     $("rMes").textContent = MESES[rM] + " " + rA;
     var m = $("mini"); m.innerHTML = "";
+    if (!leidos) return;
     var f0 = inicioRejilla(rA, rM);
     for (var i = 0; i < 42; i++) {
       var f = new Date(f0.getFullYear(), f0.getMonth(), f0.getDate() + i), t = leidos[i] || "", d = document.createElement("div");
-      d.className = t + (f.getMonth() !== rM ? " fuera" : "");
+      d.className = (f.getMonth() === rM ? t : "") + (f.getMonth() !== rM ? " fuera" : "");
       d.textContent = f.getDate() + (t && f.getMonth() === rM ? " " + t : "");
       m.appendChild(d);
     }
   }
-  $("rAnt").onclick = function(){ rM--; if (rM < 0) { rM = 11; rA--; } resumen(); };
-  $("rSig").onclick = function(){ rM++; if (rM > 11) { rM = 0; rA++; } resumen(); };
+  function cambiarMes(d){
+    rM += d; if (rM < 0) { rM = 11; rA--; } if (rM > 11) { rM = 0; rA++; }
+    if (marcando) textoMarcar(); else if (rejillaFoto && rejillaFoto.pts) leer(); else resumen();
+    $("rMes").textContent = MESES[rM] + " " + rA;
+  }
+  $("rAnt").onclick = function(){ cambiarMes(-1); };
+  $("rSig").onclick = function(){ cambiarMes(1); };
+  /* mover la rejilla automática una fila arriba o abajo */
+  function moverRejilla(d){
+    if (!rejillaFoto || rejillaFoto.pts) return;
+    var ch = (rejillaFoto.y1 - rejillaFoto.y0) / 6;
+    rejillaFoto.y0 += d * ch; rejillaFoto.y1 += d * ch; leer();
+  }
+  $("mArriba").onclick = function(){ moverRejilla(-1); };
+  $("mAbajo").onclick = function(){ moverRejilla(1); };
+
+  var PASOS = [
+    function(){ return "1/4 · Toca la esquina de ARRIBA a la IZQUIERDA del lunes de la PRIMERA fila (aunque sea de otro mes)."; },
+    function(){ return "2/4 · Toca la esquina de ARRIBA a la DERECHA del domingo de la PRIMERA fila."; },
+    function(){ return "3/4 · Toca la esquina de ABAJO a la DERECHA del domingo de la fila donde está el día " + ultimoDia(rA, rM) + "."; },
+    function(){ return "4/4 · Toca la esquina de ABAJO a la IZQUIERDA del lunes de esa misma fila (la del día " + ultimoDia(rA, rM) + ")."; }
+  ];
+  function textoMarcar(pre){
+    $("capaTxt").textContent = (pre || "") + "Primero elige abajo el mes de la foto. " + PASOS[esquinas.length]();
+  }
   function empezarMarcar(pre){
-    marcando = 1; esquinas = []; rejillaFoto = null; ctx.putImageData(imgData, 0, 0);
-    $("resumen").style.display = "none"; $("cGuardar").disabled = true;
-    $("capaTxt").textContent = (pre || "") + "Toca la esquina de ARRIBA a la IZQUIERDA del primer lunes de la cuadrícula.";
+    marcando = 1; esquinas = []; rejillaFoto = null; leidos = null; ctx.putImageData(imgData, 0, 0);
+    $("resumen").style.display = "block"; $("mini").style.display = "none"; $("mover").style.display = "none";
+    $("cGuardar").disabled = true;
+    resumen(); textoMarcar(pre);
   }
   $("cMarcar").onclick = function(){ empezarMarcar(""); };
   lienzo.addEventListener("click", function(e){
@@ -308,12 +341,9 @@
     var r = lienzo.getBoundingClientRect(), x = (e.clientX - r.left) * lienzo.width / r.width, y = (e.clientY - r.top) * lienzo.height / r.height;
     esquinas.push([x, y]);
     ctx.fillStyle = "#f00"; ctx.beginPath(); ctx.arc(x, y, 7, 0, 7); ctx.fill();
-    if (esquinas.length === 1) $("capaTxt").textContent = "Ahora toca la esquina de ABAJO a la DERECHA del último domingo (sexta fila).";
-    else {
-      var a = esquinas[0], b = esquinas[1];
-      rejillaFoto = { x0: Math.min(a[0], b[0]), x1: Math.max(a[0], b[0]), y0: Math.min(a[1], b[1]), y1: Math.max(a[1], b[1]) };
-      leer();
-    }
+    if (esquinas.length > 1) { var p = esquinas[esquinas.length - 2]; ctx.strokeStyle = "#f00"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(p[0], p[1]); ctx.lineTo(x, y); ctx.stroke(); }
+    if (esquinas.length < 4) textoMarcar();
+    else { rejillaFoto = { pts: esquinas.slice(), filas: filasMes(rA, rM) }; leer(); }
   });
   function cerrar(){ $("capa").classList.remove("si"); imgData = null; marcando = 0; }
   $("cCancelar").onclick = cerrar;
