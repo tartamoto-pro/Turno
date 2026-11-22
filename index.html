@@ -44,6 +44,10 @@
   .leyenda { display:flex; justify-content:space-around; font-size:13px; }
   .leyenda span { display:flex; align-items:center; gap:5px; }
   .leyenda i { width:16px; height:16px; border-radius:3px; display:inline-block; }
+  .paleta { display:flex; gap:6px; }
+  .paleta button { flex:1; border:2px solid #ccc; border-radius:10px; padding:6px 2px; font-size:18px; font-weight:700; color:#222; display:flex; flex-direction:column; align-items:center; }
+  .paleta button small { font-size:11px; font-weight:400; }
+  .paleta button.activo { border:3px solid #111; box-shadow:0 0 0 2px #fff inset; transform:scale(1.05); }
   .botones { display:flex; gap:8px; }
   .botones button { flex:1; font-size:16px; padding:12px 6px; border-radius:10px; border:none; background:var(--barra); color:#fff; font-weight:600; }
   .botones button.sec { background:#e4e6ea; color:#222; }
@@ -79,17 +83,17 @@
 <div class="dias"><div>LUN</div><div>MAR</div><div>MIÉ</div><div>JUE</div><div>VIE</div><div>SÁB</div><div>DOM</div></div>
 <div class="rejilla" id="rejilla"></div>
 <div class="pie">
-  <div class="leyenda">
-    <span><i style="background:var(--di)"></i>Di 8–20</span>
-    <span><i style="background:var(--m)"></i>M 8–15</span>
-    <span><i style="background:var(--n)"></i>N 20–8</span>
-    <span style="color:#d00;font-weight:700">12 Festivo</span>
+  <div class="paleta" id="paleta">
+    <button data-p="Di" style="background:var(--di)">Di<small>8–20</small></button>
+    <button data-p="M" style="background:var(--m)">M<small>8–15</small></button>
+    <button data-p="N" style="background:var(--n)">N<small>20–8</small></button>
+    <button data-p="" style="background:#fff">🧽<small>Borrar</small></button>
   </div>
   <div class="botones">
     <button id="btnFoto">📷 Foto de su calendario</button>
     <button id="btnGal" class="sec">🖼️ Galería</button>
   </div>
-  <div class="ayuda">Toca un día para cambiar el turno (libre → Di → N → M) · Mantén pulsado para escribir una nota</div>
+  <div class="ayuda" id="ayuda">Elige un color y toca los días para pintarlos · Mantén pulsado un día para escribir una nota</div>
 </div>
 <input type="file" id="fFoto" accept="image/*" capture="environment" hidden>
 <input type="file" id="fGal" accept="image/*" hidden>
@@ -192,15 +196,17 @@
         (no ? '<span class="sobre">✉</span><span class="nota"></span>' : "");
       if (no) c.querySelector(".nota").textContent = no;
       c.dataset.k = k;
-      var pulsado = null, largo = false;
-      c.addEventListener("touchstart", function(){ var el = this; largo = false; pulsado = setTimeout(function(){ largo = true; abrirNota(el.dataset.k); }, 550); }, { passive:true });
-      c.addEventListener("touchmove", function(){ clearTimeout(pulsado); }, { passive:true });
+      var pulsado = null, largo = false, tx = 0, ty = 0, movido = false;
+      c.addEventListener("touchstart", function(e){ var el = this; largo = false; movido = false; tx = e.touches[0].clientX; ty = e.touches[0].clientY;
+        pulsado = setTimeout(function(){ if (!movido) { largo = true; abrirNota(el.dataset.k); } }, 550); }, { passive:true });
+      c.addEventListener("touchmove", function(e){ if (Math.abs(e.touches[0].clientX - tx) > 10 || Math.abs(e.touches[0].clientY - ty) > 10) { movido = true; clearTimeout(pulsado); } }, { passive:true });
       c.addEventListener("touchend", function(e){ clearTimeout(pulsado); if (largo) e.preventDefault(); });
       c.addEventListener("contextmenu", function(e){ e.preventDefault(); if (!largo) abrirNota(this.dataset.k); });
       c.addEventListener("click", function(){
-        if (largo) { largo = false; return; }
-        var k = this.dataset.k, t = datos[k] || "", n = CICLO[(CICLO.indexOf(t) + 1) % CICLO.length];
-        if (n) datos[k] = n; else delete datos[k];
+        if (largo || movido) { largo = false; movido = false; return; }
+        if (pincel === null) { toast("Elige abajo un color para pintar"); return; }
+        var k = this.dataset.k;
+        if (pincel) datos[k] = pincel; else delete datos[k];
         guardar(); pintar();
       });
       r.appendChild(c);
@@ -218,6 +224,16 @@
   $("nCancelar").onclick = cerrarNota;
   $("nGuardar").onclick = function(){ var t = $("notaTxt").value.trim(); if (t) notas[notaK] = t; else delete notas[notaK]; guardarNotas(); cerrarNota(); pintar(); };
   $("nBorrar").onclick = function(){ delete notas[notaK]; guardarNotas(); cerrarNota(); pintar(); };
+  var pincel = null; // null = sin pintar; "" = borrar
+  Array.prototype.forEach.call(document.querySelectorAll("#paleta button"), function(b){
+    b.onclick = function(){
+      var p = b.dataset.p;
+      pincel = (pincel === p) ? null : p;
+      Array.prototype.forEach.call(document.querySelectorAll("#paleta button"), function(x){ x.classList.toggle("activo", pincel !== null && x.dataset.p === pincel); });
+      $("ayuda").textContent = pincel === null ? "Elige un color y toca los días para pintarlos · Mantén pulsado un día para escribir una nota"
+        : (pincel ? "Pintando " + pincel + ": toca los días. Vuelve a tocar el color para dejar de pintar." : "Borrando: toca los días que quieras dejar libres.");
+    };
+  });
   function mover(d){ vM += d; if (vM < 0) { vM = 11; vA--; } if (vM > 11) { vM = 0; vA++; } pintar(); }
   $("ant").onclick = function(){ mover(-1); };
   $("sig").onclick = function(){ mover(1); };
