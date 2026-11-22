@@ -73,6 +73,7 @@
 <body>
 <header>
   <h1>📅 Turnos</h1>
+  <button id="btnInstalar" style="display:none;background:#fff;color:#222">Instalar</button>
   <button id="btnFoto" aria-label="Foto de su calendario">📷</button>
   <button id="btnGal" aria-label="Elegir de la galería">🖼️</button>
   <button id="btnHoy">Hoy</button>
@@ -330,6 +331,10 @@
   };
 
   pintar();
+  var avisoInstalar = null;
+  window.addEventListener("beforeinstallprompt", function(e){ e.preventDefault(); avisoInstalar = e; $("btnInstalar").style.display = ""; });
+  $("btnInstalar").onclick = function(){ if (!avisoInstalar) return; avisoInstalar.prompt(); avisoInstalar.userChoice.then(function(){ avisoInstalar = null; $("btnInstalar").style.display = "none"; }); };
+  window.addEventListener("appinstalled", function(){ $("btnInstalar").style.display = "none"; toast("App instalada"); });
   if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function(){});
 })();
 </script>
